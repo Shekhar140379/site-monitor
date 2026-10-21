@@ -177,27 +177,51 @@ def send_slack(text):
         print(f"  Slack send failed: {e}")
 
 
+def _env(name, default=""):
+    return (os.getenv(name) or default).strip()
+
+
 def send_email(subject, text):
-    host, user, pwd, to = (os.getenv("SMTP_HOST"), os.getenv("SMTP_USER"),
-                           os.getenv("SMTP_PASS"), os.getenv("ALERT_EMAIL_TO"))
-    if not (host and user and pwd and to):
+    host, user, to = _env("SMTP_HOST"), _env("SMTP_USER"), _env("ALERT_EMAIL_TO")
+    pwd = _env("SMTP_PASS").replace(" ", "")  # Gmail app passwords are often pasted with spaces
+    missing = [n for n, v in [("SMTP_HOST", host), ("SMTP_USER", user),
+                              ("SMTP_PASS", pwd), ("ALERT_EMAIL_TO", to)] if not v]
+    if missing:
+        if len(missing) < 4:
+            print(f"  Email skipped - missing secret(s): {', '.join(missing)}")
         return
-    port = int(os.getenv("SMTP_PORT", "587"))
-    msg = MIMEText(text)
-    msg["Subject"] = subject
-    msg["From"] = os.getenv("SMTP_FROM", user)
-    msg["To"] = to
     try:
-        if port == 465:
-            server = smtplib.SMTP_SSL(host, port, timeout=20)
-        else:
-            server = smtplib.SMTP(host, port, timeout=20)
-            server.starttls()
-        server.login(user, pwd)
-        server.sendmail(msg["From"], [a.strip() for a in to.split(",")], msg.as_string())
-        server.quit()
-    except Exception as e:  # noqa: BLE001
-        print(f"  Email send failed: {e}")
+        port = int(_env("SMTP_PORT", "587"))
+    except ValueError:
+        port = 587
+    recipients = [a.strip() for a in to.split(",") if a.strip()]
+    msg = MIMEText(text, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = _env("SMTP_FROM", user)
+    msg["To"] = ", ".join(recipients)
+
+    # Try the configured port first, then the other common one (587 STARTTLS <-> 465 SSL)
+    attempts = [port] + [p for p in (587, 465) if p != port]
+    for p in attempts:
+        try:
+            if p == 465:
+                server = smtplib.SMTP_SSL(host, p, timeout=20, context=ssl.create_default_context())
+            else:
+                server = smtplib.SMTP(host, p, timeout=20)
+                server.ehlo()
+                server.starttls(context=ssl.create_default_context())
+                server.ehlo()
+            server.login(user, pwd)
+            server.sendmail(msg["From"], recipients, msg.as_string())
+            server.quit()
+            print(f"  Email sent via {host}:{p} to {len(recipients)} recipient(s)")
+            return
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"  Email send failed ({host}:{p}): login rejected - check SMTP_USER / SMTP_PASS "
+                  f"(Gmail needs an App Password). Server said: {e.smtp_code} {e.smtp_error!r}")
+            return
+        except Exception as e:  # noqa: BLE001
+            print(f"  Email send failed ({host}:{p}): {type(e).__name__}: {e}")
 
 
 def alert(subject, text):
