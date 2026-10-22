@@ -51,6 +51,11 @@ USER_AGENT = "Mozilla/5.0 (compatible; SiteUptimeMonitor/1.0)"
 # Certificate authorities that browsers have distrusted/blocked. The monitor's own trust store
 # (Ubuntu on GitHub) may lag behind browsers, so flag these explicitly.
 DISTRUSTED_ISSUERS = ["emsign", "emudhra"]
+# Intermediates whose private keys were compromised (Oct 2026) and are blocked by all major browsers
+COMPROMISED_INTERMEDIATES = [
+    "EM DV TLS CA - G3B", "EM OV TLS CA - G3B", "EM EV TLS CA - G3B",
+    "EM DV TLS CA - G3C", "EM OV TLS CA - G3C", "EM EV TLS CA - G3C",
+]
 
 
 # --------------------------------------------------------------------------- checks
@@ -85,12 +90,19 @@ def check_site(site):
             issuer_name = issuer.get("commonName") or issuer.get("organizationName") or "unknown"
             details["ssl_issuer"] = issuer_name
             issuer_text = " ".join(issuer.values()).lower()
+            issuer_key = issuer_name.lower().replace(" ", "")
+            if any(bad.lower().replace(" ", "") == issuer_key for bad in COMPROMISED_INTERMEDIATES):
+                return {"status": "DOWN",
+                        "reason": f"SSL certificate issued by '{issuer_name}', one of the 8 COMPROMISED eMudhra "
+                                  f"intermediates that Chrome, Firefox, Safari and Edge now block. Visitors see a "
+                                  f"security error. Replace the certificate immediately.",
+                        "details": details}
             if any(bad in issuer_text for bad in DISTRUSTED_ISSUERS):
                 warnings.append(
-                    f"SSL certificate is issued by '{issuer_name}' (eMudhra/emSign). In Oct 2026 browsers "
-                    f"began blocking compromised eMudhra intermediates and Chrome is removing the emSign "
-                    f"ECC Root CA-G3 - visitors may see 'Not Secure' errors even though this check passes. "
-                    f"Replace the certificate with one from a different authority.")
+                    f"SSL certificate is issued by eMudhra ('{issuer_name}'). This intermediate is NOT on the "
+                    f"list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and "
+                    f"browsers may tighten trust further. Check which root it chains to, and plan to move "
+                    f"to another certificate authority.")
             if days_left <= SSL_WARN_DAYS:
                 warnings.append(f"SSL certificate expires in {days_left} day(s) on {details['ssl_expires']}")
         except ssl.SSLCertVerificationError as e:
@@ -328,7 +340,17 @@ def main():
                 # warn when it first appears, then once a day while it persists
                 if prev_status != "WARN" or res["reason"] != prev.get("reason") \
                         or now - prev.get("last_alert", 0) >= 24 * 3600:
-                    alert(f"⚠️ WARNING: {name}", f"{url}\n\n{res['reason']}\nChecked: {now_ist_str()}")
+                    d = res["details"]
+                    info = "\n".join(line for line in [
+                        "Site status: reachable (UP)",
+                        f"HTTP status: {d['http_status']}" if "http_status" in d else "",
+                        f"Load time: {d['response_seconds']}s" if "response_seconds" in d else "",
+                        f"SSL issued by: {d['ssl_issuer']}" if "ssl_issuer" in d else "",
+                        f"SSL valid until: {d['ssl_expires']} ({d['ssl_days_left']} days left)"
+                        if "ssl_expires" in d else "",
+                    ] if line)
+                    alert(f"⚠️ WARNING: {name}",
+                          f"{url}\n\n{info}\n\nWarning: {res['reason']}\n\nChecked: {now_ist_str()}")
                     state["sites"][name] = {"status": "WARN", "since": prev.get("since", now) if prev_status == "WARN" else now,
                                             "last_alert": now, "reason": res["reason"]}
             else:  # UP
