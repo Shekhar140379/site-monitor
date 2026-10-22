@@ -2,16 +2,16 @@
   "last_heartbeat": "2026-10-22",
   "sites": {
     "GSPL Trans website": {
-      "last_alert": 1792661711.5860696,
-      "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
-      "since": 1792660549.2004638,
-      "status": "WARN"
+      "last_alert": 1792674034.3502133,
+      "reason": "Server returned HTTP 404 Not Found",
+      "since": 1792674034.3502133,
+      "status": "DOWN"
     },
     "GSPL Trans website (www)": {
-      "last_alert": 1792661711.5860696,
-      "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
-      "since": 1792660549.2004638,
-      "status": "WARN"
+      "last_alert": 1792674034.3502133,
+      "reason": "Server returned HTTP 404 Not Found",
+      "since": 1792674034.3502133,
+      "status": "DOWN"
     }
   }
 }
