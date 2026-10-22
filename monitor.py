@@ -48,6 +48,10 @@ HEARTBEAT_HOUR_IST = int(os.getenv("HEARTBEAT_HOUR_IST", "9"))  # daily "all OK"
 
 USER_AGENT = "Mozilla/5.0 (compatible; SiteUptimeMonitor/1.0)"
 
+# Certificate authorities that browsers have distrusted/blocked. The monitor's own trust store
+# (Ubuntu on GitHub) may lag behind browsers, so flag these explicitly.
+DISTRUSTED_ISSUERS = ["emsign", "emudhra"]
+
 
 # --------------------------------------------------------------------------- checks
 
@@ -77,6 +81,16 @@ def check_site(site):
             days_left = (expires - datetime.now(timezone.utc)).days
             details["ssl_expires"] = expires.strftime("%d %b %Y")
             details["ssl_days_left"] = days_left
+            issuer = {k: v for rdn in cert.get("issuer", ()) for k, v in rdn}
+            issuer_name = issuer.get("commonName") or issuer.get("organizationName") or "unknown"
+            details["ssl_issuer"] = issuer_name
+            issuer_text = " ".join(issuer.values()).lower()
+            if any(bad in issuer_text for bad in DISTRUSTED_ISSUERS):
+                warnings.append(
+                    f"SSL certificate is issued by '{issuer_name}' (eMudhra/emSign). In Oct 2026 browsers "
+                    f"began blocking compromised eMudhra intermediates and Chrome is removing the emSign "
+                    f"ECC Root CA-G3 - visitors may see 'Not Secure' errors even though this check passes. "
+                    f"Replace the certificate with one from a different authority.")
             if days_left <= SSL_WARN_DAYS:
                 warnings.append(f"SSL certificate expires in {days_left} day(s) on {details['ssl_expires']}")
         except ssl.SSLCertVerificationError as e:
@@ -194,7 +208,9 @@ def send_email(subject, text):
         port = int(_env("SMTP_PORT", "587"))
     except ValueError:
         port = 587
-    recipients = [a.strip() for a in to.split(",") if a.strip()]
+    import re
+    # accept commas, semicolons, spaces or new lines between addresses
+    recipients = [a for a in re.split(r"[,;\s]+", to) if "@" in a]
     msg = MIMEText(text, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = _env("SMTP_FROM", user)
@@ -212,9 +228,16 @@ def send_email(subject, text):
                 server.starttls(context=ssl.create_default_context())
                 server.ehlo()
             server.login(user, pwd)
-            server.sendmail(msg["From"], recipients, msg.as_string())
+            refused = server.sendmail(msg["From"], recipients, msg.as_string())
             server.quit()
-            print(f"  Email sent via {host}:{p} to {len(recipients)} recipient(s)")
+            print(f"  Email sent via {host}:{p} to {len(recipients) - len(refused)} of "
+                  f"{len(recipients)} recipient(s)")
+            for addr, (code, why) in refused.items():
+                print(f"  Email REFUSED for {addr}: {code} {why!r}")
+            return
+        except smtplib.SMTPRecipientsRefused as e:
+            for addr, (code, why) in e.recipients.items():
+                print(f"  Email REFUSED for {addr}: {code} {why!r}")
             return
         except smtplib.SMTPAuthenticationError as e:
             print(f"  Email send failed ({host}:{p}): login rejected - check SMTP_USER / SMTP_PASS "
@@ -323,6 +346,8 @@ def main():
             extra = []
             if "ssl_days_left" in r["details"]:
                 extra.append(f"SSL valid {r['details']['ssl_days_left']}d")
+            if "ssl_issuer" in r["details"]:
+                extra.append(f"issued by {r['details']['ssl_issuer']}")
             if "response_seconds" in r["details"]:
                 extra.append(f"{r['details']['response_seconds']}s")
             lines.append(f"{icon} {site['name']} - {r['status']}" + (f" ({', '.join(extra)})" if extra else ""))
