@@ -8,7 +8,7 @@
       "status": "WARN"
     },
     "GSPL Trans website (www)": {
-      "last_alert": 1792847715.3075902,
+      "last_alert": 1792934412.9158072,
       "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
       "since": 1792674311.8065016,
       "status": "WARN"
