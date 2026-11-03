@@ -2,13 +2,13 @@
   "last_heartbeat": "2026-11-03",
   "sites": {
     "GSPL Trans website": {
-      "last_alert": 1793618116.0260365,
+      "last_alert": 1793704516.0498884,
       "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
       "since": 1793618116.0260365,
       "status": "WARN"
     },
     "GSPL Trans website (www)": {
-      "last_alert": 1793618116.0260365,
+      "last_alert": 1793704516.0498884,
       "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
       "since": 1793618116.0260365,
       "status": "WARN"
