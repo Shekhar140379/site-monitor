@@ -2,16 +2,16 @@
   "last_heartbeat": "2026-11-13",
   "sites": {
     "GSPL Trans website": {
-      "last_alert": 1794570316.0436544,
-      "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
-      "since": 1793618116.0260365,
-      "status": "WARN"
+      "last_alert": 1794570911.3601453,
+      "reason": "SSL certificate error - browsers will show 'Not Secure': Hostname mismatch, certificate is not valid for 'gspltrans.com'.",
+      "since": 1794570911.3601453,
+      "status": "DOWN"
     },
     "GSPL Trans website (www)": {
-      "last_alert": 1794570316.0436544,
-      "reason": "SSL certificate is issued by eMudhra ('EM DV TLS CA - G2A-1'). This intermediate is NOT on the list of 8 compromised ones, but Chrome is removing the emSign ECC Root CA - G3 and browsers may tighten trust further. Check which root it chains to, and plan to move to another certificate authority.",
-      "since": 1793618116.0260365,
-      "status": "WARN"
+      "last_alert": 1794570911.3601453,
+      "reason": "SSL certificate error - browsers will show 'Not Secure': Hostname mismatch, certificate is not valid for 'www.gspltrans.com'.",
+      "since": 1794570911.3601453,
+      "status": "DOWN"
     }
   }
 }
